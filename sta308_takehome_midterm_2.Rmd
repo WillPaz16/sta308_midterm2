@@ -1,0 +1,390 @@
+---
+title: "STA308 Midterm 2"
+author: "Will Paz"
+date: "2023-11-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Stated Problem
+
+As coach, you get to decide: does your team go for a two point field goal or a three point field goal? Your code must consider both scenarios.
+
+## Going for two
+
+When you go for a two point field goal, there is a 65% chance your team completes the inbound pass (so 35% chance it is stolen and you lose the game). The player who receives the ball has a 52% chance of making the shot (you are awarded 2 points, and win the game). There is a 10% chance that player is fouled on the play.  If fouled, they are awarded two foul shots and unfortunately are not a good shooter -- they have a 55% chance of making each shot (each worth one point, so you may miss both, make one and tie or make 2 and win the game)).  So by using this strategy it is possible your teams scores 0, 1 or 2 points, but the outcome is randomly determined by probabilities.
+
+## Going for three
+
+When you go for a three point field goal, there is an 80% chance your team completes the inbound pass. The player who receives the ball has a 40% chance of making the three point shot (you are awarded 3 points, and win the game). There is only a 5% chance they are fouled on the play. However if fouled, they are awarded three foul shots and because this person is a good shooter, they have an 95% chance of making each of the foul shots (so they may make 0, 1, 2 or all 3 shots).  The possible point outcomes from this strategy are 0, 1, 2, or 3 points but again random. You will win the game if your team scores 2 or 3 points. 
+
+## Which scenario is the better decision?
+
+### Two Point Attempt
+
+#### Simulating the point outcome of deciding to take a two point shot
+
+```{r going for two function}
+going_for_two <- function() {
+  while(TRUE) {
+    points <- 0 # Sets the initial point count to zero
+    
+    # Decides if the pass will be completed or end as a turnover based on probabilities
+    inBoundPass <- sample(c("Completed","Turnover"), 
+                          size=1,prob=c(.65,.35))
+    
+    if(inBoundPass == "Turnover") { # If the in bound pass is stolen, stop the loop
+      break
+    }
+    
+    # Decides if the shot will be made, missed, or the player is fouled
+    shotAttempt <- sample(c("Bucket","Fouled","Miss"),
+                          size=1,prob=c(.52,.1,.38))
+    
+    # If the player makes the game winner, add 2 points, and stop the loop
+    if(shotAttempt == "Bucket") { 
+      points <- points + 2
+      break
+    } else if(shotAttempt == "Fouled") { # If the player was fouled, let's go take free throws
+      
+      # Decides if the 1st free throw will be made or missed
+      freeThrowAttempt1 <- sample(c("Bucket","Miss"),
+                                  size=1,prob=c(.55,.45))
+      
+      if(freeThrowAttempt1 == "Bucket") { # If the player makes the FT, add 1 point
+        points <- points + 1
+      }
+      
+      # Decides if the 1st free throw will be made or missed
+      freeThrowAttempt2 <- sample(c("Bucket","Miss"),
+                                  size=1,prob=c(.55,.45))
+      
+      if(freeThrowAttempt2 == "Bucket") { # If the player makes the FT, add 1 point
+        points <- points + 1
+      }
+      break
+    } else { # If the shot is missed, stop the loop
+      break
+    }
+  }
+  points # Outputs the number of points gained after the play occurs
+}
+```
+
+```{r}
+going_for_two()
+```
+
+
+#### The mean and standard deviation of the point outcome
+
+```{r statisical summary of taking a two point shot}
+summary_two_pt_shot <- function(num_trials=100000) {
+  vec <- c() # Creates an empty vector for the outcomes from the two point try
+  for(i in 1:num_trials) {
+    # Adds all of the outcomes to the vector
+    test <- going_for_two()
+    vec <- c(test,vec)
+  }
+  output <- list(mean(vec),sd(vec)) # Creates a list of the mean and standard deviation of points
+  names(output) <- c("Average number of points","Standard Deviation of points")
+  output
+}
+```
+
+```{r}
+summary_two_pt_shot()
+```
+
+
+#### Chance of winning, losing, or going to OT after attempting to take the two point shot
+
+```{r chance of winning off a two point shot}
+chance_of_winning_two_pt_shot <- function(num_trials=100000) {
+  # Creates an initial values for the number of each scoring option
+  twos <- 0
+  ones <- 0
+  zeroes <- 0
+  
+  for(i in 1:num_trials) {
+    test <- going_for_two()
+    if(test == 2) { 
+      # If the outcome is 2 points, then the count of twos increases
+      twos <- twos + 1 
+      
+    } else if(test == 1) {
+      # If the outcome is 1 points, then the count of ones increases
+      ones <- ones + 1
+      
+    } else if(test == 0) {
+      # If the outcome is 0 points, then the count of zeroes increases
+      zeroes <- zeroes + 1
+    }
+  }
+  
+  # The following gives the chance of winning, going to overtime, or losing
+  pct_of_pt_oucomes <- list(twos/(twos + ones + zeroes)*100, 
+                            ones/(twos + ones + zeroes)*100,
+                            zeroes/(twos + ones + zeroes)*100)
+  names(pct_of_pt_oucomes) <- c("% Chance of winning in regulation",
+                                "% Chance of going of overtime",
+                                "% Chance of losing in regulation")
+  pct_of_pt_oucomes # Outputs the list of percentages aforementioned
+}
+```
+
+
+```{r}
+chance_of_winning_two_pt_shot()
+```
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+### Three Point Attempt
+
+#### Simulating the point outcome of deciding to take a three point shot
+
+```{r going for three function}
+going_for_three <- function() {
+  while(TRUE) {
+    points <- 0 # Sets the initial point count to zero
+    
+    # Decides if the pass will be completed or end as a turnover based on probabilities
+    inBoundPass <- sample(c("Completed","Turnover"),
+                          size=1,prob=c(.8,.2))
+    
+    if(inBoundPass == "Turnover") { # If the team turns the ball over, end the game
+      break
+    }
+    
+    # Decides if the shot will be made, missed, or the player is fouled
+    shotAttempt <- sample(c("Bucket","Fouled","Miss"),
+                          size=1,prob=c(.4,.05,.55))
+    
+    # If the player makes the game winner, add 3 points, and stop the loop
+    if(shotAttempt == "Bucket") { 
+      points <- points + 3
+      break
+      
+    } else if(shotAttempt == "Fouled") { # If the player was fouled, let's go take free throws
+      
+      # Decides if the 1st free throw will be made or missed
+      freeThrowAttempt1 <- sample(c("Bucket","Miss"),
+                                  size=1,prob=c(.95,.05))
+      
+      if(freeThrowAttempt1 == "Bucket") { # If the player makes the FT, add 1 point
+        points <- points + 1
+      }
+      
+      # Decides if the 2nd free throw will be made or missed
+      freeThrowAttempt2 <- sample(c("Bucket","Miss"),
+                                  size=1,prob=c(.95,.05))
+      
+      if(freeThrowAttempt2 == "Bucket") { # If the player makes the FT, add 1 point
+        points <- points + 1
+      }
+      
+      # Decides if the 3rd free throw will be made or missed
+      freeThrowAttempt3 <- sample(c("Bucket","Miss"),
+                                  size=1,prob=c(.95,.05))
+      
+      if(freeThrowAttempt3 == "Bucket") { # If the player makes the FT, add 1 point
+        points <- points + 1
+      }
+      break
+    } else {
+      break
+    }
+  }
+  points # Outputs the number of points obtained
+}
+```
+
+```{r}
+going_for_three()
+```
+
+#### The mean and standard deviation of the point outcome
+
+```{r statisical summary after taking a three point shot}
+summary_three_pt_shot <- function(num_trials=100000) {
+  vec <- c() # Creates an empty vector for the outcomes from the three point try
+  for(i in 1:num_trials) {
+    # Adds all of the outcomes to the vector
+    test <- going_for_three()
+    vec <- c(test,vec)
+  }
+  output <- list(mean(vec),sd(vec)) # Creates a list of the mean and standard deviation of points
+  names(output) <- c("Average number of points","Standard Deviation of points")
+  output
+}
+```
+
+```{r}
+summary_three_pt_shot()
+```
+
+#### Chance of winning, losing, or going to OT after attempting to take the three point shot
+
+```{r chance of winning off a three point shot}
+chance_of_winning_three_pt_shot <- function(num_trials=100000) {
+  # Creates an initial values of each point option
+  threes <- 0
+  twos <- 0
+  ones <- 0
+  zeroes <- 0
+  
+  for(i in 1:num_trials) {
+    test <- going_for_three()
+    if(test == 3) {
+      # If the outcome is 3 points, then the count of threes increases
+      threes <- threes + 1
+    } else if(test == 2) {
+      # If the outcome is 2 points, then the count of twos increases
+      twos <- twos + 1
+    } else if(test == 1) {
+      # If the outcome is 1 points, then the count of ones increases
+      ones <- ones + 1
+    } else if(test == 0) {
+      # If the outcome is 0 points, then the count of zeroes increases
+      zeroes <- zeroes + 1
+    }
+  }
+  
+  # The following gives the chance of winning, going to overtime, or losing
+  pct_of_pt_oucomes <- list((twos + threes)/(threes + twos + ones + zeroes)*100, 
+                            ones/(threes + twos + ones + zeroes)*100,
+                            zeroes/(threes + twos + ones + zeroes)*100)
+  names(pct_of_pt_oucomes) <- c("% Chance of winning in regulation",
+                                "% Chance of going of overtime",
+                                "% Chance of losing in regulation")
+  pct_of_pt_oucomes # Outputs the list of percentages aforementioned
+}
+```
+
+```{r}
+chance_of_winning_three_pt_shot()
+```
+
+## Analysis
+
+Do we go for the two, or do we go for the three for the win? Typically, it's a coach's most stressful decision in any given game. But using simulations and probabilities, we are able to simulate the outcome of a game regarding a coach's decision to either take the two or three point shot for the win. 
+
+As shown in the statistical summaries of each, taking the three point shot will yield to more points, on average, compared to the two point shot. Now, we must account for the standard deviation as well. With the higher probable point outcome of the three pointer comes with the higher risk of failing. When the two point shot may have a lesser point outcome, on average, but it's "risk factor" is lower due to a lower standard deviation. 
+
+In the code chunks that detail the chances of each of the outcomes, the chance of winning is comparable to each other. The two point try may have a tad lower of a percent but the difference is negligible. That is why I ultimately believe the only way we can truly make a better decision is to account for overtime. But, without overtime, and using the data as well as my contextual knowledge, I would go for the two because it causes less risk. 
+
+In the following code chunks, we will explore what happens when overtime is accounted for in our simulation.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+## Bonus
+
+### Chance of winning when attempting the two point shot, with OT included
+
+```{r chance of winning off a two point shot including OT}
+chance_of_winning_two_pt_shot_with_OT <- function(num_trials=100000) {
+  # Initial count of times won versus times lost
+  win <- 0
+  lose <- 0
+  
+  for(i in 1:num_trials) {
+    test <- going_for_two()
+    if(test == 2) {
+      # If the value is 2, add a count to wins
+      win <- win + 1
+    } else if(test == 1) { # If the value is 1, we're going to OT
+      # winInOT gives the probability of winning or losing in OT
+      winInOT <- sample(c("Win","Lose"),
+                        size=1,prob=c(.5,.5))
+      
+      if(winInOT == "Win") {
+        # If you win in OT, add a value to wins
+        win <- win + 1
+      } else {
+        # If you lose in OT, add a value to lose
+        lose <- lose + 1
+      }
+      
+    } else if(test == 0) {
+      # If you score 0 points, add a value to lose
+      lose <- lose + 1
+    }
+  }
+  
+  # The following gives the chance of winning or losing
+  pct_of_pt_oucomes <- list(win/(win + lose)*100, 
+                            lose/(win + lose)*100)
+  names(pct_of_pt_oucomes) <- c("% Chance of winning",
+                                "% Chance of losing")
+  pct_of_pt_oucomes # Outputs the percent chance of winning or losing
+}
+```
+
+```{r}
+chance_of_winning_two_pt_shot_with_OT()
+```
+
+### Chance of winning when attempting the three point shot, with OT included
+
+```{r chance of winning off a three point shot including OT}
+chance_of_winning_three_pt_shot_with_OT <- function(num_trials=100000) {
+  # Initial count of times won versus times lost
+  win <- 0
+  lose <- 0
+  
+  for(i in 1:num_trials) {
+    test <- going_for_three()
+    if(test == 3) {
+      # If the value is 3, add a count to wins
+      win <- win + 1
+    } else if(test == 2) {
+      # If the value is 2, add a count to wins
+      win <- win + 1
+    } else if(test == 1) { # If the value is 1, we're going to OT
+     # winInOT gives the probability of winning or losing in OT
+      winInOT <- sample(c("Win","Lose"),
+                        size=1,prob=c(.5,.5))
+      
+      if(winInOT == "Win") {
+        # If you win in OT, add a value to wins
+        win <- win + 1
+      } else {
+        # If you lose in OT, add a value to lose
+        lose <- lose + 1
+      }
+      
+    } else if(test == 0) {
+      # If you score 0 points, add a value to lose
+      lose <- lose + 1
+    }
+  }
+  
+  # The following gives the chance of winning or losing
+  pct_of_pt_oucomes <- list(win/(win + lose)*100, 
+                            lose/(win + lose)*100)
+  names(pct_of_pt_oucomes) <- c("% Chance of winning",
+                                "% Chance of losing")
+  pct_of_pt_oucomes # Outputs the percent chance of winning or losing
+}
+```
+
+```{r}
+chance_of_winning_three_pt_shot_with_OT()
+```
+
+### Bonus Analysis
+
+As shown above, the chance of winning pertaining to if in the final seconds of the game that the coach decides that a player should take either a two or three, varies with including overtime as a possible outcome. Using the outcomes provided in the bonus section, we can see that there is a higher chance of victory with the two point shot rather than the three. This is the same recommendation that I came to without the inclusion of overtime, but with overtime included, we can see concretely that going for two is a better option when a team is only down by one point.
+
+
+
+
+
+
+
+
