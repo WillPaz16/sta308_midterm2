@@ -1,6 +1,7 @@
 # sta308_midterm2
 
 Title: STA308 Midterm 2
+
 Author: Will Paz
 
 The following details the assignment for the second midterm of STA308. We are delving into simulating the results of either choosing to take a two point or three point shot to end a game while down by one point. I hope you enjoy the commentary as well as the code itself. 
